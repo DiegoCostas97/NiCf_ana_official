@@ -1,0 +1,27 @@
+# NiCf source positions, one row per signal run.
+#
+# run       signal run number
+# bkg_run   background run used for the channel-by-channel subtraction
+# label     human-readable description of the deployment position
+# src_mm    source position in WCTE coordinates [mm]  -> used for the DATA
+#           time-of-flight correction, because the PMT positions in
+#           wcte_v11_*.json are in this frame.
+# src_cm    source position in WCSim coordinates [cm] -> used for the MC
+#           time-of-flight correction, because the MC hit positions are in
+#           this frame.
+# notes     provenance / verification status
+#
+# !! READ THIS BEFORE ADDING A ROW !!
+# src_mm and src_cm are TWO DIFFERENT FRAMES, not the same number in two units.
+# For runs 1769/2336/2337 the tabulated pair happens to satisfy
+# src_mm = 10 * src_cm, i.e. the two frames coincide up to units; for run 1767
+# it does not (1525 mm vs 80 cm = 800 mm). Both conventions cannot be right at
+# the same time, so re-derive the pair for every new run from the CDS -> WCTE
+# transform and the WCSim macro, and record how you got it in `notes`.
+# See README.md, section "Coordinate frames".
+#
+run,bkg_run,label,src_mm,src_cm,notes
+1767,1766,TEC centre (CDS R=0 phi=0 Z=0),0 1525 0,0 80 0,src_mm from CDS->WCTE (+1525 mm on y); src_cm from the WCSim macro. Pair is NOT a unit conversion - verify.
+1769,1766,TEC towards the beam pipe,0 476 1175.8,0 47.6 117.58,src_cm from the WCSim macro; src_mm assumed = 10 x src_cm - VERIFY against the CDS transform.
+2336,1766,Lower barrel,0 -16.64 562.8,0 -1.664 56.28,As used in the thesis production (run_general.sh defaults).
+2337,1766,Lower barrel off-axis,-476.4 -28.1375 291.7,-47.64 -2.81375 29.17,As used in the thesis production (run_general.sh example).

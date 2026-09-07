@@ -1,0 +1,31 @@
+# Runtime dependencies of the NiCf analysis pipeline.
+#
+# The versions below are the ones the analysis was validated with. Python 3.9 or
+# newer is required: on Python 3.7 the awkward/numpy combination available there
+# raises "concatenate() got an unexpected keyword argument 'casting'" inside
+# functions.read_run().
+#
+#   python -m venv venv && source venv/bin/activate
+#   pip install -r requirements.txt
+
+numpy>=1.21,<2.0
+pandas>=1.3
+scipy>=1.7
+matplotlib>=3.4
+tqdm>=4.60
+
+# ROOT I/O for the WCTE offline part-files (functions.read_run)
+uproot>=5.0
+awkward>=2.0
+
+# Parquet engine. Use pyarrow: fastparquet produced "Corrupted thrift data"
+# errors when writing the large hit-level tables on Lustre.
+pyarrow>=8.0
+
+# Not installable with pip, must be provided separately:
+#   WCSimFilePackages        WCSim .npz reader (npz_to_df.truehits_info_to_df)
+#   WCTE_BRB_Data_Analysis   ROOT part-file helpers (wcte.brbtools)
+# Point WCTE_SOFTWARE_DIR at the checkout that contains both.
+#
+# ROOT + cppyy are needed only for the BONSAI code path in
+# external/functions_bonsai.py, which the multilateration pipeline does not use.
