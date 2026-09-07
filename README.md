@@ -437,86 +437,7 @@ gives `√(Σw²)` correctly.
 
 ---
 
-## 7. Known limitations and open points
-
-1. **Coordinate-frame table.** See section 3. The `src_mm`/`src_cm` convention is
-   not uniform across runs and must be re-verified.
-2. **Vertex frame.** Until this packaging pass, `run_angular_vertex.py` used the
-   multilaterator vertices as if they were already in WCTE millimetres. They are
-   in WCSim centimetres, so `L` and `cos θ` mixed units and frames — a shift of
-   roughly 1.1 m in the assumed emission point. The conversion is now applied by
-   default (`--vertex-frame wcsim-cm`); any angular-response figure produced
-   before this has to be regenerated. The point-source cross-check
-   (`--use-source-pos`, which takes `--source-pos-mm` in the WCTE frame) and the
-   relative QE were never affected.
-3. **Railed vertices.** The multilaterator bounds the fit at ±300 cm and returns
-   `fit_success = True` even when a fit sits on the bound, far outside the tank
-   (r ≤ 157 cm, |y| ≤ 139 cm). Those vertices are now dropped by default; pass
-   `--keep-railed-vertices` to look at them.
-4. **MC hit multiplicity is treated differently in the two stages.** The RQE
-   counts each channel once per MC candidate (`all_pmts` holds unique tube
-   numbers), which mirrors the front-end merging photoelectrons that arrive
-   within a few ns — in data the unique-PMT/hit ratio inside a candidate is
-   1.000. The angular stage instead rebuilds per-hit rows from `all_times`, so a
-   doubly-hit tube counts twice. The effect is small but the two stages should be
-   made consistent.
-5. **The WCSim geometry has 1843 channels, the detector 2014.** Nine mPMTs
-   present in the JSON are absent from the geofile, so those channels have no MC
-   counterpart and no relative QE (hence ~1550 valid channels rather than 2014).
-   They also drop out of the vertex fit, which silently uses fewer hits than the
-   candidate contains.
-6. **Background subtraction in the low-memory angular path.** With
-   `--data-candidates-csv`, the background comes from the per-PMT counts in
-   `data_hits_R*.npz`. Those were produced with the tRMS and max-nhits cuts but
-   *without* the `nhits >= 6` requirement applied to the signal candidates here,
-   and over the SIG/BKG common events rather than over the candidates in the CSV.
-   The background is therefore slightly over-subtracted. The effect is confined
-   to the lowest-statistics bins because the response is renormalised at
-   `cos θ = 1`, but the parquet path (`--sig-parquet`/`--bkg-parquet`) remains
-   the reference for small samples.
-7. **Normalisation at the last bin.** The angular response is divided by its
-   highest-`cos θ` bin, so a noisy last bin rescales the whole curve. Check
-   `figures/nhits_vs_costheta_raw.png` before quoting numbers; averaging the top
-   few bins instead would be more robust.
-8. **MC statistics limit the RQE.** See stage 2. More WCSim events, not more
-   data part-files, is what narrows the per-channel error.
-9. **Delaminated mPMT categories.** `run_angular_vertex.py` will split out two
-   "Delaminated" groups if `other_mpmt_info.dict` carries a `delaminated` flag.
-   The dictionary shipped in `data/` does not (its 93 entries carry only
-   `mpmt_type`, `mpmt_site` and `led_pos`), so those categories always come out
-   empty; they are harmless placeholders in the output CSV.
-10. **ID offset headroom.** Data event and candidate IDs are made unique with a
-   10⁶ multiplier per part-file. A typical part yields ~1.7×10⁴ windows and
-   ~7×10⁵ candidates, so the margin is under a factor of two. Both
-   `run_data_hits.py` and `create_file_for_multilateration.py` now abort if a
-   part-file overflows it rather than silently producing colliding IDs. If that
-   ever fires, raise the constant and regenerate the candidate CSV **together
-   with** its multilaterator output.
-11. **Per-hit MC re-extraction.** `run_mc_trigger` stores a candidate's times and
-   its *unique* tube numbers, which loses the time↔tube pairing, so both MC
-   stages recover it by matching times back to the event hit table. This is
-   exact but it is the slowest part of the MC processing. Storing the per-hit
-   indices in `functions.run_mc_trigger` would remove the step entirely.
-
----
-
-## 8. Troubleshooting
-
-| Symptom | Cause and fix |
-|---|---|
-| `TypeError: concatenate() got an unexpected keyword argument 'casting'` | Old numpy/awkward combination (Python 3.7). Use the Python 3.9 environment. |
-| `Corrupted thrift data` when reading a parquet | `fastparquet` on Lustre. Use `pyarrow`, or better, use the `--data-hits-npz` path, which writes no large parquet. |
-| `No .npz files matched` | The MC glob was expanded by the shell. Quote it, or set `MC_NPZ_DIR`/`MC_NPZ_PATTERN` in `config/env.sh`. |
-| `run <N> is not in config/positions.csv` | Add the row, with the source position in both frames. |
-| Many MC candidates reported as having no reconstructed vertex | The MC candidate CSV and the MC vertex CSV were produced from different `--mc-npz` lists, so the chunk offsets differ. Compare `mc_candidates_for_reco.csv.filelist.txt` with the pattern used in the angular stage. |
-| RQE distribution does not narrow when adding data | Expected: the MC sample is the limiting one. Generate more WCSim events. |
-| Reconstructed vertices pile up at exactly ±300 | Fits railed at the multilaterator bound. They are dropped by default in the angular stage; see `--vertex-bound-cm`. |
-| Angular response looks different from an older plot | The vertex frame conversion is now applied. Pass `--vertex-frame wcte-mm` (or `VERTEX_FRAME=wcte-mm`) to reproduce the old, unconverted behaviour. |
-| `ModuleNotFoundError: WCSimFilePackages` | `WCTE_SOFTWARE_DIR` does not point at a checkout containing it. |
-
----
-
-## 9. Reproducing the thesis results
+## 7. Reproducing the thesis results
 
 For each source position (1767, 1769, 2336, 2337):
 
@@ -540,16 +461,10 @@ with `N_PARTS=25`, `WINDOW=20`, `THRESH_MIN=2`, `TRMS_CUT=2.0`,
 
 ## 10. Authorship and contact
 
-<!-- Fill in before publishing. -->
-
 Written as part of a doctoral thesis on the WCTE water Cherenkov detector and
 its radioactive calibration sources (NiCf, AmBe), within the WCTE and
 Hyper-Kamiokande collaborations.
 
-* Author: *&lt;name, institute, e-mail&gt;*
-* The vertex-based angular-response method implemented in
-  `run_angular_vertex.py` follows the approach presented by
-  *&lt;originator&gt;* to the collaboration.
+* Author: *&lt;Diego Costas Rodríguez, IGFAE, diego.costas.rodriguez@usc.es&gt;*
 * The multilaterator used for vertex reconstruction is external to this
   repository; credit it where appropriate.
-* License: *&lt;choose one before making the repository public&gt;*
